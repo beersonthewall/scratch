@@ -1,0 +1,31 @@
+* Coffee Roasts
+** Basic Operations
+*** Prerequisites
+- python
+- virtualenv
+  
+*** Setup
+```
+virtualenv venv
+. venv/bin/activate
+pip install -r requirements.txt
+```
+
+*** Adding Dependencies
+
+```
+pip install dep
+pip freeze > requirements.txt
+```
+** What's This?
+
+Data analysis of my first coffee roasts. TLDR I plot some curves.
+
+*** Conventions
+
+- The first datapoint at time 0:00 will use the ambient temperature since the SR 800 does not display a temp and simply says (Lo) for the first few seconds of a roast.
+- All data points are taken by hand on a notepad, thus there is _significant_ measurment error.
+- Temperatures are from the SR 800 and the actual bean temperatures are likely significantly lower. The reading is consistent which helps reproducability, it's just not the actual bean temp.
+- Temperatures are in degrees Fahrenheit 
+- Times formatted as minutes:seconds
+

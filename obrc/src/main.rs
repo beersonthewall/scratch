@@ -43,7 +43,8 @@ fn main() -> std::io::Result<()>{
 	}
     }
 
-    let mut stream = BufWriter::new(stdout());
+    let stdout = stdout().lock();
+    let mut stream = BufWriter::new(stdout);
     write!(stream, "{}", "{")?;
     let mut itr = stations.iter().peekable();
     while let Some((n,d)) = itr.next() {

@@ -2,8 +2,10 @@ use std::fs::File;
 use std::io::{prelude::*, BufWriter};
 use std::io::{BufReader, stdout};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 const FILENAME: &'static str = "../../1brc/measurements3.txt";
+const NUM_WORKERS: usize = 20;
 //const FILENAME: &'static str = "data.csv";
 
 struct Measurment<'a> {
@@ -27,22 +29,41 @@ fn parse_line(line: &str) -> Result<Measurment, String> {
     }
 }
 
+fn worker(input: Arc<Vec<String>>, start: usize, sz: usize, shared_stations: Arc<Mutex<HashMap<String, Station>>>) {
+    let mut stations = HashMap::new();
+    let input = &input[start..start + sz];
+    for line in input {
+	let measure = parse_line(&line).unwrap();
+	let s = stations.entry(String::from(measure.name)).or_insert_with(|| Station { temps: vec![] });
+	s.temps.push(measure.temp);
+    }
+    let mut results = shared_stations.lock().unwrap();
+    (*results).extend(stations);
+}
+
 fn main() -> std::io::Result<()>{
     let f = File::open(FILENAME)?;
     let reader = BufReader::new(f);
-    let mut stations: HashMap<String, Station> = HashMap::new();
+    let stations = Arc::new(Mutex::new(HashMap::new()));
 
-    for line in reader.lines() {
-	if let Ok(line) = line {
-	    let measure = parse_line(&line).unwrap();
+    let raw: Arc<Vec<String>> = Arc::new(reader.lines().filter(|l| l.is_ok()).map(|ok| ok.unwrap()).collect());
+    let chunks_sz = raw.len() / NUM_WORKERS;
 
-	    let s = stations.entry(String::from(measure.name)).or_insert_with(|| Station { temps: vec![] });
-	    s.temps.push(measure.temp);
-	} else {
-	    panic!("reader err");
-	}
+    let mut handles = Vec::new();
+
+    for offset in (0..raw.len()).step_by(chunks_sz) {
+	let stations = stations.clone();
+	let raw = raw.clone();
+	handles.push(std::thread::spawn(move || {
+	    worker(raw, offset, chunks_sz, stations)
+	}));
     }
 
+    for h in handles {
+	h.join().unwrap();
+    }
+
+    let stations = stations.lock().unwrap();
     let stdout = stdout().lock();
     let mut stream = BufWriter::new(stdout);
     write!(stream, "{}", "{")?;

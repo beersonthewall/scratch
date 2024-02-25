@@ -1,6 +1,6 @@
-use std::fs::{read_to_string, File};
-use std::io::prelude::*;
-use std::io::{BufRead, BufReader};
+use std::fs::File;
+use std::io::{prelude::*, BufWriter};
+use std::io::{BufReader, stdout};
 use std::collections::HashMap;
 
 const FILENAME: &'static str = "../../1brc/measurements3.txt";
@@ -36,28 +36,29 @@ fn main() -> std::io::Result<()>{
 	if let Ok(line) = line {
 	    let measure = parse_line(&line).unwrap();
 
-	    if let Some(s) = stations.get_mut(measure.name) {
-		s.temps.push(measure.temp);
-	    } else {
-		let s = Station {
-		    temps: vec![measure.temp]
-		};
-		stations.insert(String::from(measure.name), s);
-	    }
-	    
+	    let s = stations.entry(String::from(measure.name)).or_insert_with(|| Station { temps: vec![] });
+	    s.temps.push(measure.temp);
 	} else {
 	    panic!("reader err");
 	}
     }
 
-    for (n, d) in stations.iter() {
+    let mut stream = BufWriter::new(stdout());
+    write!(stream, "{}", "{")?;
+    let mut itr = stations.iter().peekable();
+    while let Some((n,d)) = itr.next() {
 	let temps = &d.temps;
 	let min = temps.iter().fold(f64::MAX, |a, &b| f64::min(a, b));
 	let max = temps.iter().fold(f64::MIN, |a, &b| f64::max(a, b));
 	let avg = temps.iter().fold(0.0, |a, &b| a + b) / temps.len() as f64;
 
-	println!("{n} min {min}, max: {max}, avg {avg}");
+	write!(stream, "{n}={min}/{avg}/{max}")?;
+	if let Some(_) = itr.peek() {
+	    write!(stream, ",")?;
+	}
     }
+    write!(stream, "{}", '}')?;
+    stream.flush()?;
 
     Ok(())
 }

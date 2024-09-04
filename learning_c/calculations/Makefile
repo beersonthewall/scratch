@@ -1,10 +1,11 @@
 CC := gcc
+FLAGS := -Wall -Werror -Wextra
 
 calc: main.o
-	$(CC) main.o -o calc
+	$(CC) $(FLAGS) main.o -o calc
 
-main.o:
-	@$(CC) -c main.c
+main.o: main.c
+	@$(CC) $(FLAGS) -c main.c
 
 .PHONY: run
 run: calc

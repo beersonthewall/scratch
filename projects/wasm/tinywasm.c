@@ -17,7 +17,7 @@ int read_u32_leb128(uint32_t* u, FILE *f) {
   *u = 0;
   for(int i = 0; i < 5; i++) {
     uint32_t c = (uint32_t) fgetc(f);
-    if(feof(f) || (int)c == EOF) {
+    if((int)c == EOF) {
       fprintf(stderr, "Unexpected EOF\n");
       return -1;
     }
@@ -36,7 +36,7 @@ int read_u32_leb128(uint32_t* u, FILE *f) {
 int load_section(Runtime *r, FILE *f) {
   // https://webassembly.github.io/spec/core/binary/modules.html#sections
   int sid = fgetc(f);
-  if(feof(f)) {
+  if(sid == EOF) {
     fprintf(stderr, "Unexpected EOF\n");
     return -1;
   }
@@ -95,7 +95,7 @@ int load_binary(Runtime* r, FILE* f) {
   // Read magic number and WASM version
   for(size_t i = 0; i < sizeof(expected); i++) {
     char c = (char) fgetc(f);
-    if(feof(f) || (int)c == EOF) { return -1; }
+    if((int)c == EOF) { return -1; }
 
     assert(c == expected[i]);
   }

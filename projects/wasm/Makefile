@@ -15,7 +15,7 @@ clean:
 tinywasm-asan:
 	$(CC) $(CFLAGS) -fsanitize=address $(FILES) -o $@
 
-.PHONY:
+.PHONY: run
 run: tinywasm
 	./tinywasm example-binaries/h.wasm
 

@@ -11,12 +11,46 @@ typedef struct Runtime {
 
 /* ========= end type definitions ========= */
 
+/* ========= leb128 ========= */
+
+int read_u32_leb128(uint32_t* u, FILE *f) {
+  *u = 0;
+  for(int i = 0; i < 5; i++) {
+    uint32_t c = (uint32_t) fgetc(f);
+    if(feof(f) || (int)c == EOF) {
+      fprintf(stderr, "Unexpected EOF\n");
+      return -1;
+    }
+
+    //printf("read byte %x\n", c);
+    *u |= (c & 0x7f) << (i*7);
+    if(!(c & 0x80)) { return 0; }
+  }
+  return 0;
+}
+
+/* ========= end leb128 ========= */
+
 /* ========= begin binary format ========= */
 
 int load_section(Runtime *r, FILE *f) {
   // https://webassembly.github.io/spec/core/binary/modules.html#sections
-  char sid = (char) fgetc(f);
-  if(feof(f)) { return -1; }
+  int sid = fgetc(f);
+  if(feof(f)) {
+    fprintf(stderr, "Unexpected EOF\n");
+    return -1;
+  }
+  uint32_t sz = 0;
+  if(read_u32_leb128(&sz, f)) {
+    return -1;
+  }
+
+  fprintf(stderr, "sid: %d, sz: %x\n", sid, sz);
+
+  if(fseek(f, sz, SEEK_CUR)) {
+    fprintf(stderr, "fseek err \n");
+  }
+
   switch(sid) {
   case 0: // custom
     break;
@@ -61,15 +95,17 @@ int load_binary(Runtime* r, FILE* f) {
   // Read magic number and WASM version
   for(size_t i = 0; i < sizeof(expected); i++) {
     char c = (char) fgetc(f);
-    if(feof(f)) { return -1; }
+    if(feof(f) || (int)c == EOF) { return -1; }
 
     assert(c == expected[i]);
   }
 
-  if(!load_section(r, f)) {
-    return -1;
+  while(!feof(f)) {
+    if(load_section(r, f)) {
+      fprintf(stderr, "Failed to load section\n");
+      return -1;
+    }
   }
-
   return 0;
 }
 
@@ -89,7 +125,9 @@ int main(int argc, char **argv) {
   }
 
   Runtime r = {};
-  load_binary(&r, f);
+  if(load_binary(&r, f)) {
+    return -1;
+  }
   fclose(f);
 }
 
